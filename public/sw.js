@@ -1,6 +1,18 @@
-const CACHE = 'poker-tournament-v1';
-const ASSETS = ['/', '/index.html', '/manifest.webmanifest', '/icon.svg'];
-self.addEventListener('install', event => event.waitUntil(caches.open(CACHE).then(cache => cache.addAll(ASSETS)).then(() => self.skipWaiting())));
+const CACHE = 'poker-tournament-v2';
+const STATIC_ASSETS = ['/manifest.webmanifest', '/icon.svg'];
+
+async function precacheApp() {
+  const cache = await caches.open(CACHE);
+  const page = await fetch('/');
+  const html = await page.clone().text();
+  await Promise.all([cache.put('/', page.clone()), cache.put('/index.html', page.clone())]);
+  const files = [...html.matchAll(/(?:src|href)="([^"#?]+)"/g)]
+    .map(match => match[1])
+    .filter(path => path.startsWith('/'));
+  await cache.addAll([...STATIC_ASSETS, ...files]);
+}
+
+self.addEventListener('install', event => event.waitUntil(precacheApp().then(() => self.skipWaiting())));
 self.addEventListener('activate', event => event.waitUntil(self.clients.claim()));
 self.addEventListener('fetch', event => {
   if (event.request.method !== 'GET') return;
