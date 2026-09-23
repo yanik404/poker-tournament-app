@@ -25,7 +25,11 @@ export function playerContribution(player: Player, teams: Team[], finance: Finan
 }
 export function mainPrizes(players: Player[], finance: FinanceSettings): number[] {
   const total = players.length * finance.buyIn;
-  return finance.prizePercentages.map(percent => Math.round(total * percent) / 100);
+  const first = Math.round(total * finance.prizePercentages[0]) / 100;
+  const second = Math.round(total * finance.prizePercentages[1]) / 100;
+  // Give any unavoidable 1-cent rounding remainder to third place, so the
+  // complete main pot is always paid out exactly once.
+  return [first, second, Math.round((total - first - second) * 100) / 100];
 }
 export function payoutByPlayer(players: Player[], teams: Team[], finance: FinanceSettings, result: FinanceResult): Record<string, number> {
   const payout = Object.fromEntries(players.map(player => [player.id, 0]));
