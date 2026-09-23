@@ -1,4 +1,4 @@
-const CACHE = 'poker-tournament-v3';
+const CACHE = 'poker-tournament-v4-design';
 const base = new URL(self.registration.scope).pathname;
 const asset = path => `${base}${path}`;
 const STATIC_ASSETS = ['manifest.webmanifest', 'icon.svg'];
@@ -13,4 +13,4 @@ async function precacheApp() {
 }
 self.addEventListener('install', event => event.waitUntil(precacheApp().then(() => self.skipWaiting())));
 self.addEventListener('activate', event => event.waitUntil(self.clients.claim()));
-self.addEventListener('fetch', event => { if (event.request.method !== 'GET') return; event.respondWith(caches.match(event.request).then(hit => hit || fetch(event.request).then(response => { const copy = response.clone(); caches.open(CACHE).then(cache => cache.put(event.request, copy)); return response; }).catch(() => caches.match(base)))); });
+self.addEventListener('fetch', event => { if (event.request.method !== 'GET') return; event.respondWith(caches.open(CACHE).then(cache => cache.match(event.request).then(hit => hit || fetch(event.request).then(response => { if (response.ok) cache.put(event.request, response.clone()); return response; }).catch(() => cache.match(base))))); });
