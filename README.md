@@ -4,7 +4,7 @@ Eine schlanke, installierbare PWA für private Texas-Hold’em-Turniere. Sie ber
 
 ## Funktionen
 
-- Chip-Berechnung für den vorhandenen Bestand: 100× 5/25/50/100, 50× 500/1000. Kein Vorschlag überschreitet den Bestand.
+- Chip-Berechnung für den vorhandenen Bestand: 100× 5/25/50/100, 50× 500/1000. Kein Vorschlag überschreitet den Bestand; kleine Chips werden bewusst bevorzugt, damit die Startstacks reichlich Chips enthalten und trotzdem handlich bleiben.
 - Blind-Struktur passend zu Startstack, Turnierdauer, Leveldauer und optionaler Pause nach 60 Minuten.
 - Grossformatige Uhr mit Start, Pause, Weiter, Level vor/zurück und Reset.
 - Signalton und Vibration beim automatischen Levelwechsel (falls das Gerät dies unterstützt).
