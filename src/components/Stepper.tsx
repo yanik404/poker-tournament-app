@@ -1,0 +1,2 @@
+interface Props { label: string; value: number; onChange: (value: number) => void; min: number; max: number; suffix?: string; }
+export function Stepper({ label, value, onChange, min, max, suffix = '' }: Props) { return <div className="stepper"><span>{label}</span><div><button aria-label={`${label} verringern`} onClick={() => onChange(Math.max(min, value - 1))}>−</button><strong>{value}{suffix}</strong><button aria-label={`${label} erhöhen`} onClick={() => onChange(Math.min(max, value + 1))}>+</button></div></div>; }

@@ -1,0 +1,2 @@
+import { describe, expect, it } from 'vitest'; import { buildBlindStructure } from './blinds';
+describe('blind structure', () => { it('begins with 10/20 for a normal stack', () => { const levels = buildBlindStructure(180, 1600); expect(levels[0].smallBlind).toBe(10); expect(levels[0].bigBlind).toBe(20); }); it('adds an optional break', () => expect(buildBlindStructure(180, 1600, 15, 10).some(level => level.isBreak)).toBe(true)); });
