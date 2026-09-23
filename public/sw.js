@@ -1,4 +1,4 @@
-const CACHE = 'poker-tournament-v4-design';
+const CACHE = 'poker-tournament-v5-design';
 const base = new URL(self.registration.scope).pathname;
 const asset = path => `${base}${path}`;
 const STATIC_ASSETS = ['manifest.webmanifest', 'icon.svg'];
