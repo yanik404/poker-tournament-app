@@ -10,7 +10,7 @@ Eine schlanke, installierbare PWA für private Texas-Hold’em-Turniere. Sie ber
 - Signalton und Vibration beim automatischen Levelwechsel (falls das Gerät dies unterstützt).
 - Persistente Wiederaufnahme: Einstellungen, Struktur, Level, Restzeit und Pausenstatus werden in `localStorage` gespeichert. Die Uhr verwendet einen absoluten Endzeitpunkt, damit ein Reload oder geschlossener Browser korrekt berücksichtigt wird.
 - Turnierkasse mit Spielernamen, frei wählbarem Buy-in und automatischer Verteilung des Hauptpots auf Platz 1–3 (50/30/20).
-- Optionaler Team-Modus für 2er- oder 3er-Teams: Der Team-Pot wird pro Team erfasst, gleichmässig auf die Mitglieder aufgeteilt und vollständig dem Gewinnerteam gutgeschrieben.
+- Optionaler Team-Modus: Es werden 2er-Teams gebildet; bei einer ungeraden Spielerzahl entsteht automatisch genau ein 3er-Team. Der Team-Pot wird pro Spieler erhoben, damit alle exakt gleich viel einzahlen, und vollständig dem Gewinnerteam gutgeschrieben.
 - Lokale Saldo-Historie: Einzahlungen und Gewinne werden pro Spielername weitergeführt und bei der nächsten Runde wieder angezeigt.
 - Klarer Rundenabschluss: „Runde beenden“ öffnet die Platzierungen und den Teamgewinner. Danach lässt sich direkt die nächste Runde mit neuen Pot-Beträgen starten oder das Turnier mit einem Zahlungsvorschlag abschliessen.
 - Offline-PWA mit Service Worker, Web-App-Manifest und eigenem Poker-Icon.
