@@ -1,25 +1,62 @@
 import type { Level } from '../types/tournament';
 
-const ratios: [number, number][] = [[1,2],[2.5,5],[5,10],[7.5,15],[10,20],[15,30],[20,40],[30,60],[50,100],[75,150],[100,200],[150,300],[200,400],[300,600],[500,1000],[750,1500],[1000,2000]];
-const roundToFive = (n: number) => Math.max(5, Math.round(n / 5) * 5);
-export function buildBlindStructure(totalMinutes: number, startStack: number, requestedLevelMinutes?: number, breakMinutes = 0): Level[] {
+const roundBlind = (value: number) => {
+  const unit = value < 250 ? 5 : value < 1000 ? 25 : value < 5000 ? 100 : 500;
+  return Math.max(unit, Math.round(value / unit) * unit);
+};
+
+/**
+ * Builds a time-boxed home-tournament structure.
+ *
+ * The requested duration determines how many levels are available. Player count
+ * and starting stack determine the total chips in play; the final blind target
+ * is chosen so that the average heads-up stack is roughly 10 big blinds. That
+ * is a practical tournament heuristic, not a promise of the exact finishing
+ * minute: actual elimination speed still depends on play.
+ */
+export function buildBlindStructure(
+  totalMinutes: number,
+  startStack: number,
+  players: number,
+  requestedLevelMinutes?: number,
+  breakMinutes = 0,
+): Level[] {
   const levelMinutes = requestedLevelMinutes && requestedLevelMinutes >= 3 ? requestedLevelMinutes : 15;
-  const breaks = breakMinutes > 0 && totalMinutes >= 75 ? 1 : 0;
-  const playableMinutes = Math.max(4 * levelMinutes, totalMinutes - breaks * breakMinutes);
+  const hasBreak = breakMinutes > 0 && totalMinutes >= 75;
+  const playableMinutes = Math.max(4 * levelMinutes, totalMinutes - (hasBreak ? breakMinutes : 0));
   const fullLevels = Math.max(4, Math.floor(playableMinutes / levelMinutes));
   const remainderMinutes = playableMinutes - fullLevels * levelMinutes;
-  const base = startStack >= 1200 ? 10 : 5;
+  const playableLevelCount = fullLevels + (remainderMinutes >= 3 ? 1 : 0);
+
+  const safePlayers = Math.max(2, Math.floor(players));
+  const totalChips = Math.max(startStack * safePlayers, startStack * 2);
+  const startBigBlind = 20;
+  const targetFinalBigBlind = Math.max(100, roundBlind(totalChips / 20));
+  const breakAfterLevels = Math.max(1, Math.round(60 / levelMinutes));
   const levels: Level[] = [];
-  for (let i = 0; i < fullLevels; i++) {
-    const ratio = ratios[Math.min(i, ratios.length - 1)];
-    levels.push({ id: `level-${i + 1}`, smallBlind: roundToFive(ratio[0] * base), bigBlind: roundToFive(ratio[1] * base), durationSeconds: levelMinutes * 60 });
-    if (breaks && i === 3) levels.push({ id: 'break-1', smallBlind: 0, bigBlind: 0, durationSeconds: breakMinutes * 60, isBreak: true });
+  let previousBigBlind = 0;
+
+  for (let i = 0; i < playableLevelCount; i++) {
+    const progress = playableLevelCount <= 1 ? 1 : i / (playableLevelCount - 1);
+    const rawBigBlind = startBigBlind * Math.pow(targetFinalBigBlind / startBigBlind, progress);
+    let bigBlind = roundBlind(rawBigBlind);
+    if (i === 0) bigBlind = startBigBlind;
+    if (bigBlind <= previousBigBlind && i > 0) bigBlind = previousBigBlind + (previousBigBlind < 250 ? 5 : previousBigBlind < 1000 ? 25 : previousBigBlind < 5000 ? 100 : 500);
+    const smallBlind = roundBlind(bigBlind / 2);
+    const duration = i < fullLevels ? levelMinutes : remainderMinutes;
+
+    levels.push({
+      id: `level-${i + 1}`,
+      smallBlind,
+      bigBlind,
+      durationSeconds: duration * 60,
+    });
+    previousBigBlind = bigBlind;
+
+    if (hasBreak && i + 1 === breakAfterLevels && i < playableLevelCount - 1) {
+      levels.push({ id: 'break-1', smallBlind: 0, bigBlind: 0, durationSeconds: breakMinutes * 60, isBreak: true });
+    }
   }
-  // Keep the promise made by the duration picker: a final shorter level fills
-  // the otherwise unused minutes instead of ending a 3-hour event after 2:50.
-  if (remainderMinutes >= 3) {
-    const ratio = ratios[Math.min(fullLevels, ratios.length - 1)];
-    levels.push({ id: `level-${fullLevels + 1}`, smallBlind: roundToFive(ratio[0] * base), bigBlind: roundToFive(ratio[1] * base), durationSeconds: remainderMinutes * 60 });
-  }
+
   return levels;
 }
