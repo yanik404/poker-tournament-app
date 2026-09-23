@@ -22,4 +22,9 @@ describe('blind structure', () => {
     const levels = buildBlindStructure(180, 5000, 7, 15, 5);
     expect(levels.reduce((sum, level) => sum + level.durationSeconds, 0)).toBe(180 * 60);
   });
+
+  it('does not stretch a one-hour event just to create extra levels', () => {
+    const levels = buildBlindStructure(60, 2000, 7, 20, 0);
+    expect(levels.reduce((sum, level) => sum + level.durationSeconds, 0)).toBe(60 * 60);
+  });
 });
