@@ -15,7 +15,7 @@ export default function App() {
   const reset = () => { clearTournament(); setTournament(null); setPage('setup'); };
   if (page === 'setup') return <SetupForm onCreate={create}/>;
   if (!tournament) return null;
-  if (page === 'plan') return <TournamentPlan settings={tournament.settings} players={tournament.players} stack={tournament.stack} levels={tournament.levels} onStart={(finance: FinanceSettings) => { setTournament(old => old ? { ...old, finance, teams: createTeams(old.players, finance.teamSize) } : old); setPage('clock'); toggle(); }} onBack={() => setPage('setup')}/>;
+  if (page === 'plan') return <TournamentPlan settings={tournament.settings} players={tournament.players} stack={tournament.stack} levels={tournament.levels} onStart={(finance: FinanceSettings, teams) => { setTournament(old => old ? { ...old, finance, teams } : old); setPage('clock'); toggle(); }} onBack={() => setPage('setup')}/>;
   if (page === 'results') return <Results tournament={tournament} onBack={() => setPage('clock')} onSaved={result => setTournament(old => old ? { ...old, result } : old)}/>;
   return <TournamentClock tournament={tournament} onToggle={toggle} onNext={() => switchLevel(1)} onPrevious={() => switchLevel(-1)} onReset={reset} onResults={() => { setTournament(old => old ? { ...old, running: false, endsAt: undefined } : old); setPage('results'); }}/>;
 }

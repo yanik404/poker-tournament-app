@@ -1,0 +1,1 @@
+.assignment-list{display:grid;gap:7px;margin-top:10px}.assignment-list label{display:flex;justify-content:space-between;align-items:center;gap:12px;background:#0b2c23;border-radius:10px;padding:8px 10px;font-size:14px;font-weight:700}.assignment-list select{background:#173f33;color:#f7f3e9;border:1px solid #ffffff22;border-radius:8px;padding:7px;max-width:155px}
