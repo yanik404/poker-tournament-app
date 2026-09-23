@@ -11,7 +11,7 @@ describe('blind structure', () => {
   it('raises the finishing blinds for a larger field at equal stack and duration', () => {
     const four = buildBlindStructure(180, 5000, 4).filter(level => !level.isBreak);
     const ten = buildBlindStructure(180, 5000, 10).filter(level => !level.isBreak);
-    expect(ten.at(-1)!.bigBlind).toBeGreaterThan(four.at(-1)!.bigBlind);
+    expect(ten[ten.length - 1].bigBlind).toBeGreaterThan(four[four.length - 1].bigBlind);
   });
 
   it('adds an optional break', () => {
