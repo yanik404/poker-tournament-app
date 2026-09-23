@@ -1,12 +1,13 @@
 import { useCallback, useEffect, useState } from 'react';
-import { SetupForm } from './components/SetupForm'; import { TournamentPlan } from './components/TournamentPlan'; import { TournamentClock } from './components/TournamentClock';
-import { buildBlindStructure } from './logic/blinds'; import { calculateStartingStack, stackValue } from './logic/chips'; import { clearTournament, loadTournament, saveTournament } from './logic/storage'; import { useTournamentTimer } from './hooks/useTournamentTimer'; import type { Settings, Tournament } from './types/tournament';
-type Page = 'setup' | 'plan' | 'clock';
+import { SetupForm } from './components/SetupForm'; import { TournamentPlan } from './components/TournamentPlan'; import { TournamentClock } from './components/TournamentClock'; import { Results } from './components/Results';
+import { buildBlindStructure } from './logic/blinds'; import { calculateStartingStack, stackValue } from './logic/chips'; import { createTeams, DEFAULT_FINANCE } from './logic/finances'; import { clearTournament, loadTournament, saveTournament } from './logic/storage'; import { useTournamentTimer } from './hooks/useTournamentTimer'; import type { FinanceSettings, Player, Settings, Tournament } from './types/tournament';
+type Page = 'setup' | 'plan' | 'clock' | 'results';
 const signal = () => { navigator.vibrate?.([180, 80, 180]); const context = new AudioContext(); const oscillator = context.createOscillator(); oscillator.frequency.value = 880; oscillator.connect(context.destination); oscillator.start(); oscillator.stop(context.currentTime + .25); };
 export default function App() {
-  const [page, setPage] = useState<Page>(() => loadTournament() ? 'clock' : 'setup'); const [tournament, setTournament] = useState<Tournament | null>(() => loadTournament());
+  const restore = (): Tournament | null => { const saved = loadTournament(); if (!saved) return null; const players = saved.players ?? Array.from({ length: saved.settings.players }, (_, index) => ({ id: `player-${index + 1}`, name: `Spieler ${index + 1}` })); const finance = saved.finance ?? DEFAULT_FINANCE; return { ...saved, players, finance, teams: saved.teams ?? createTeams(players, finance.teamSize) }; };
+  const [tournament, setTournament] = useState<Tournament | null>(restore); const [page, setPage] = useState<Page>(() => restore() ? 'clock' : 'setup');
   useEffect(() => { if (tournament) saveTournament(tournament); }, [tournament]);
-  const create = (settings: Settings) => { const stack = calculateStartingStack(settings.players); const levels = buildBlindStructure(settings.totalMinutes, stackValue(stack), settings.levelMinutes, settings.breakMinutes); setTournament({ settings, stack, levels, currentLevel: 0, remainingSeconds: levels[0].durationSeconds, elapsedSeconds: 0, running: false }); setPage('plan'); };
+  const create = (settings: Settings, players: Player[]) => { const stack = calculateStartingStack(settings.players); const levels = buildBlindStructure(settings.totalMinutes, stackValue(stack), settings.levelMinutes, settings.breakMinutes); setTournament({ settings, players, teams: [], finance: DEFAULT_FINANCE, stack, levels, currentLevel: 0, remainingSeconds: levels[0].durationSeconds, elapsedSeconds: 0, running: false }); setPage('plan'); };
   const switchLevel = useCallback((direction: 1 | -1, notify = false) => setTournament(old => { if (!old) return old; const nextIndex = Math.max(0, Math.min(old.levels.length - 1, old.currentLevel + direction)); const next = old.levels[nextIndex]; if (nextIndex === old.currentLevel) return old; if (notify) signal(); return { ...old, currentLevel: nextIndex, remainingSeconds: next.durationSeconds, running: false, endsAt: undefined }; }), []);
   const onTick = useCallback((remainingSeconds: number) => setTournament(old => { if (!old || !old.running) return old; const passed = Math.max(0, old.remainingSeconds - remainingSeconds); return { ...old, remainingSeconds, elapsedSeconds: old.elapsedSeconds + passed }; }), []);
   const onEnd = useCallback(() => switchLevel(1, true), [switchLevel]); useTournamentTimer(tournament, onTick, onEnd);
@@ -14,6 +15,7 @@ export default function App() {
   const reset = () => { clearTournament(); setTournament(null); setPage('setup'); };
   if (page === 'setup') return <SetupForm onCreate={create}/>;
   if (!tournament) return null;
-  if (page === 'plan') return <TournamentPlan settings={tournament.settings} stack={tournament.stack} levels={tournament.levels} onStart={() => { setPage('clock'); toggle(); }} onBack={() => setPage('setup')}/>;
-  return <TournamentClock tournament={tournament} onToggle={toggle} onNext={() => switchLevel(1)} onPrevious={() => switchLevel(-1)} onReset={reset}/>;
+  if (page === 'plan') return <TournamentPlan settings={tournament.settings} players={tournament.players} stack={tournament.stack} levels={tournament.levels} onStart={(finance: FinanceSettings) => { setTournament(old => old ? { ...old, finance, teams: createTeams(old.players, finance.teamSize) } : old); setPage('clock'); toggle(); }} onBack={() => setPage('setup')}/>;
+  if (page === 'results') return <Results tournament={tournament} onBack={() => setPage('clock')} onSaved={result => setTournament(old => old ? { ...old, result } : old)}/>;
+  return <TournamentClock tournament={tournament} onToggle={toggle} onNext={() => switchLevel(1)} onPrevious={() => switchLevel(-1)} onReset={reset} onResults={() => { setTournament(old => old ? { ...old, running: false, endsAt: undefined } : old); setPage('results'); }}/>;
 }
