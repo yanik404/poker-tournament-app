@@ -34,7 +34,7 @@ const durationBaseValue = (minutes: number) => {
       return leftValue + ratio * (rightValue - leftValue);
     }
   }
-  return points.at(-1)![1];
+  return points[points.length - 1][1];
 };
 
 /**
