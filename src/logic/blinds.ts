@@ -34,8 +34,8 @@ export function buildBlindStructure(
 ): Level[] {
   const levelMinutes = requestedLevelMinutes && requestedLevelMinutes >= 3 ? requestedLevelMinutes : 15;
   const hasBreak = breakMinutes > 0 && totalMinutes >= 75;
-  const playableMinutes = Math.max(4 * levelMinutes, totalMinutes - (hasBreak ? breakMinutes : 0));
-  const fullLevels = Math.max(4, Math.floor(playableMinutes / levelMinutes));
+  const playableMinutes = Math.max(1, totalMinutes - (hasBreak ? breakMinutes : 0));
+  const fullLevels = Math.max(1, Math.floor(playableMinutes / levelMinutes));
   const remainderMinutes = playableMinutes - fullLevels * levelMinutes;
   const playableLevelCount = fullLevels + (remainderMinutes >= 3 ? 1 : 0);
 
