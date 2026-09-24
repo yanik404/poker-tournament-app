@@ -19,20 +19,25 @@ const playBell = async () => {
   await unlockAudio();
   if (!sharedAudioContext) return;
   try {
-    const now = sharedAudioContext.currentTime;
-    const tones = [880, 1320, 1760];
-    tones.forEach((frequency, index) => {
-      const oscillator = sharedAudioContext!.createOscillator();
-      const gain = sharedAudioContext!.createGain();
-      oscillator.type = 'sine';
-      oscillator.frequency.value = frequency;
-      const volume = index === 0 ? 0.22 : 0.11 / (index + 0.2);
-      gain.gain.setValueAtTime(volume, now);
-      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.85);
-      oscillator.connect(gain);
-      gain.connect(sharedAudioContext!.destination);
-      oscillator.start(now);
-      oscillator.stop(now + 0.9);
+    const context = sharedAudioContext;
+    const now = context.currentTime;
+    const ringOffsets = [0, 0.7, 1.4, 2.1];
+
+    ringOffsets.forEach(offset => {
+      const start = now + offset;
+      [880, 1320, 1760].forEach((frequency, index) => {
+        const oscillator = context.createOscillator();
+        const gain = context.createGain();
+        oscillator.type = index === 0 ? 'triangle' : 'sine';
+        oscillator.frequency.value = frequency;
+        const volume = index === 0 ? 0.26 : index === 1 ? 0.12 : 0.07;
+        gain.gain.setValueAtTime(volume, start);
+        gain.gain.exponentialRampToValueAtTime(0.001, start + 0.6);
+        oscillator.connect(gain);
+        gain.connect(context.destination);
+        oscillator.start(start);
+        oscillator.stop(start + 0.62);
+      });
     });
   } catch {
     // Vibration still alerts the players if WebAudio is unavailable.
@@ -49,10 +54,22 @@ export default function App() {
   const switchLevel = useCallback((direction: 1 | -1) => setTournament(old => { if (!old) return old; const nextIndex = Math.max(0, Math.min(old.levels.length - 1, old.currentLevel + direction)); const next = old.levels[nextIndex]; if (nextIndex === old.currentLevel) return old; return { ...old, currentLevel: nextIndex, remainingSeconds: next.durationSeconds, running: false, endsAt: undefined }; }), []);
   const onTick = useCallback((remainingSeconds: number) => setTournament(old => { if (!old || !old.running) return old; const passed = Math.max(0, old.remainingSeconds - remainingSeconds); return { ...old, remainingSeconds, elapsedSeconds: old.elapsedSeconds + passed }; }), []);
   const onEnd = useCallback(() => {
-    navigator.vibrate?.([300, 120, 300]);
+    navigator.vibrate?.([450, 180, 450, 180, 450]);
     if (soundEnabled) void playBell();
-    switchLevel(1);
-  }, [soundEnabled, switchLevel]);
+    setTournament(old => {
+      if (!old) return old;
+      const nextIndex = old.currentLevel + 1;
+      if (nextIndex >= old.levels.length) return { ...old, remainingSeconds: 0, running: false, endsAt: undefined };
+      const next = old.levels[nextIndex];
+      return {
+        ...old,
+        currentLevel: nextIndex,
+        remainingSeconds: next.durationSeconds,
+        running: true,
+        endsAt: Date.now() + next.durationSeconds * 1000,
+      };
+    });
+  }, [soundEnabled]);
   useTournamentTimer(tournament, onTick, onEnd);
   const toggle = async () => { if (!tournament?.running && soundEnabled) await unlockAudio(); setTournament(old => { if (!old) return old; const running = !old.running; return { ...old, running, endsAt: running ? Date.now() + old.remainingSeconds * 1000 : undefined }; }); };
   const reset = () => { clearTournament(); setTournament(null); setPage('setup'); };
