@@ -7,6 +7,7 @@ export type AlertSound = 'classic' | 'casino' | 'bell' | 'soft';
 
 const AUDIO_KEY = 'poker-audio-settings-v1';
 let sharedAudioContext: AudioContext | null = null;
+let cachedEnglishVoice: SpeechSynthesisVoice | undefined;
 
 const unlockAudio = async () => {
   try {
@@ -55,15 +56,47 @@ const playAlertSound = async (style: AlertSound) => {
   }
 };
 
+const scoreEnglishVoice = (voice: SpeechSynthesisVoice) => {
+  const name = voice.name.toLowerCase();
+  const lang = voice.lang.toLowerCase();
+  let score = 0;
+  if (lang.startsWith('en-us')) score += 35;
+  else if (lang.startsWith('en-gb')) score += 30;
+  else if (lang.startsWith('en')) score += 20;
+  else return -1000;
+
+  // Prefer voices that are commonly the natural female voices exposed by
+  // Android/Chrome, iOS/Safari and Windows. The Web Speech API has no gender
+  // property, so the choice has to be based on the voice names the OS exposes.
+  const naturalFemaleNames = [
+    'aria', 'jenny', 'samantha', 'ava', 'serena', 'zira', 'karen', 'moira',
+    'tessa', 'victoria', 'allison', 'susan', 'female', 'google us english',
+    'google uk english female', 'microsoft aria online', 'microsoft jenny online',
+  ];
+  naturalFemaleNames.forEach((preferred, index) => {
+    if (name.includes(preferred)) score += 120 - index * 3;
+  });
+  if (name.includes('natural') || name.includes('neural') || name.includes('premium')) score += 45;
+  if (name.includes('google')) score += 18;
+  if (voice.localService) score += 5;
+  return score;
+};
+
 const chooseEnglishVoice = () => {
   if (!('speechSynthesis' in window)) return undefined;
   const voices = window.speechSynthesis.getVoices();
-  const english = voices.filter(voice => voice.lang.toLowerCase().startsWith('en'));
-  const preferredNames = ['Samantha', 'Google UK English Female', 'Microsoft Aria', 'Microsoft Jenny', 'Microsoft Zira', 'Siri Female', 'Ava', 'Serena', 'Karen', 'Moira', 'Tessa'];
-  return preferredNames.map(name => english.find(voice => voice.name.toLowerCase().includes(name.toLowerCase()))).find(Boolean)
-    ?? english.find(voice => voice.lang.toLowerCase().startsWith('en-gb'))
-    ?? english.find(voice => voice.lang.toLowerCase().startsWith('en-us'))
-    ?? english[0];
+  if (!voices.length) return cachedEnglishVoice;
+  const ranked = voices
+    .filter(voice => voice.lang.toLowerCase().startsWith('en'))
+    .sort((a, b) => scoreEnglishVoice(b) - scoreEnglishVoice(a));
+  cachedEnglishVoice = ranked[0] ?? cachedEnglishVoice;
+  return cachedEnglishVoice;
+};
+
+const prepareVoices = () => {
+  if (!('speechSynthesis' in window)) return;
+  chooseEnglishVoice();
+  window.speechSynthesis.addEventListener?.('voiceschanged', chooseEnglishVoice, { once: true });
 };
 
 const speak = (text: string) => {
@@ -71,22 +104,22 @@ const speak = (text: string) => {
   window.speechSynthesis.cancel();
   window.speechSynthesis.resume();
   const utterance = new SpeechSynthesisUtterance(text);
-  utterance.lang = 'en-GB';
-  utterance.rate = 0.96;
-  utterance.pitch = 1.02;
-  utterance.volume = 1;
   const voice = chooseEnglishVoice();
+  utterance.lang = voice?.lang || 'en-US';
+  utterance.rate = 0.93;
+  utterance.pitch = 1;
+  utterance.volume = 1;
   if (voice) utterance.voice = voice;
   window.speechSynthesis.speak(utterance);
 };
 
 const announceLevel = (level: Level, changed = true) => {
   if (level.isBreak) {
-    speak('Break time.');
+    speak('Time for a break.');
     return;
   }
   const prefix = changed ? 'Blinds are up. ' : 'Tournament started. ';
-  speak(`${prefix}Small blind ${level.smallBlind}. Big blind ${level.bigBlind}.`);
+  speak(`${prefix}Small blind, ${level.smallBlind}. Big blind, ${level.bigBlind}.`);
 };
 
 export default function App() {
@@ -97,6 +130,7 @@ export default function App() {
   const [alertSound, setAlertSound] = useState<AlertSound>(() => loadAudio().alertSound);
   useEffect(() => { if (tournament) saveTournament(tournament); }, [tournament]);
   useEffect(() => { localStorage.setItem(AUDIO_KEY, JSON.stringify({ mode: audioMode, alertSound })); }, [audioMode, alertSound]);
+  useEffect(() => { prepareVoices(); }, []);
   const create = (settings: Settings, players: Player[]) => { const stack = calculateStartingStack(settings.players, settings.totalMinutes); const levels = buildBlindStructure(settings.totalMinutes, stackValue(stack), settings.players, settings.levelMinutes, settings.breakMinutes); setTournament({ settings, players, teams: [], finance: DEFAULT_FINANCE, stack, levels, currentLevel: 0, remainingSeconds: levels[0].durationSeconds, elapsedSeconds: 0, running: false }); setPage('plan'); };
   const notify = useCallback(async (level: Level) => {
     if (audioMode === 'mute') return;
@@ -121,7 +155,7 @@ export default function App() {
   };
   if (page === 'setup') return <SetupForm onCreate={create}/>;
   if (!tournament) return null;
-  if (page === 'plan') return <TournamentPlan settings={tournament.settings} players={tournament.players} stack={tournament.stack} levels={tournament.levels} onStart={async (finance: FinanceSettings, teams) => { const firstLevel = tournament.levels[0]; await unlockAudio(); if (audioMode !== 'mute') navigator.vibrate?.([100, 60, 100]); if (audioMode === 'sound') { await playAlertSound(alertSound); announceLevel(firstLevel, false); } setTournament(old => old ? { ...old, finance, teams, running: true, endsAt: Date.now() + old.remainingSeconds * 1000 } : old); setPage('clock'); }} onBack={() => setPage('setup')}/>;
+  if (page === 'plan') return <TournamentPlan settings={tournament.settings} players={tournament.players} stack={tournament.stack} levels={tournament.levels} onStart={async (finance: FinanceSettings, teams) => { const firstLevel = tournament.levels[0]; await unlockAudio(); prepareVoices(); if (audioMode !== 'mute') navigator.vibrate?.([100, 60, 100]); if (audioMode === 'sound') { await playAlertSound(alertSound); announceLevel(firstLevel, false); } setTournament(old => old ? { ...old, finance, teams, running: true, endsAt: Date.now() + old.remainingSeconds * 1000 } : old); setPage('clock'); }} onBack={() => setPage('setup')}/>;
   if (page === 'results') return <Results tournament={tournament} onBack={() => setPage('clock')} onSaved={result => setTournament(old => old ? { ...old, result } : old)} onNextRound={nextRound} onFinish={() => setPage('final')}/>;
   if (page === 'final') return <FinalSettlement tournament={tournament} onNewTournament={reset}/>;
   return <TournamentClock tournament={tournament} onToggle={toggle} onNext={() => switchLevel(1, true)} onPrevious={() => switchLevel(-1, true)} audioMode={audioMode} alertSound={alertSound} onAudioMode={setAudioMode} onAlertSound={setAlertSound} onPreviewAlert={previewAlert} onReset={reset} onEndRound={() => { setTournament(old => old ? { ...old, running: false, endsAt: undefined } : old); setPage('results'); }}/>
